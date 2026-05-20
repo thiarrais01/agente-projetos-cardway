@@ -294,7 +294,7 @@ const API_KEY = 'sk-ant-api03-C9e0FIbHSBJn3EM2UANlVD_eTiFuX1eNRUnsHxQncmuVYBY_1w
 async function callAPI(userMsg) {
   S.history.push({role:'user', content: userMsg});
   // Proxy AWS EC2 — resolve CORS chamando servidor próprio
-  const res = await fetch('http://13.220.62.75:3000', {
+  const res = await fetch('https://13.220.62.75', {
     method:'POST',
     headers:{ 'Content-Type':'application/json' },
     body: JSON.stringify({
