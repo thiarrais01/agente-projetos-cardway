@@ -287,40 +287,37 @@ const S = {
 };
 
 // ━━ API ━━
-// ━━ MAKE WEBHOOK — proxy para Claude API ━━
-const MAKE_URL = 'https://hook.us2.make.com/3yf41varrt7lb8vnvwucia6t60cu3r2s';
+// ━━ API ━━
+const MAKE_WEBHOOK = 'https://hook.us2.make.com/3yf41varrt7lb8vnvwucia6t60cu3r2s';
+const API_KEY = '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';
 
 async function callAPI(userMsg) {
   S.history.push({role:'user', content: userMsg});
-
-  // Envia para o Make que chama a Claude API e devolve a resposta
-  const res = await fetch(MAKE_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+  // Proxy AWS EC2 — resolve CORS chamando servidor próprio
+  const res = await fetch('http://13.220.62.75:3000', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
     body: JSON.stringify({
-      message: userMsg,
-      history: S.history,
+      model:'claude-sonnet-4-20250514',
+      max_tokens:1024,
       system: SYSTEM,
+      messages: S.history
     })
   });
-
   const data = await res.json();
-
-  // A resposta vem do Make via Webhook response → data.content[0].text
-  let raw = '';
-  if (data.content && data.content[0] && data.content[0].text) {
-    raw = data.content[0].text;
-  } else if (typeof data === 'string') {
-    raw = data;
-  } else {
-    raw = JSON.stringify(data);
-  }
-
+  const raw = data.content?.[0]?.text || '{}';
   let parsed;
-  try { parsed = JSON.parse(raw.replace(/```json|```/g,'').trim()); }
-  catch { parsed = {message: raw || 'Erro ao processar resposta.', scores:S.scores, quick_replies:[], finished:false, doc_ready:false}; }
-
+  try { parsed = JSON.parse(raw.replace(/\`\`\`json|\`\`\`/g,'').trim()); }
+  catch { parsed = {message:raw, scores:S.scores, quick_replies:[], finished:false, doc_ready:false}; }
   S.history.push({role:'assistant', content: raw});
+  
+  // Dispara webhook Make com dados completos em paralelo (sem bloquear)
+  fetch(MAKE_WEBHOOK, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({message:userMsg, response:raw})
+  }).catch(()=>{});
+  
   return parsed;
 }
 
